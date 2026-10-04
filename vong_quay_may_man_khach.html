@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vòng quay may mắn</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#fff4d6,#ffe0e8);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;color:#222}
+.wrap{width:min(760px,100%);display:block}
+.card{background:#fff;border-radius:22px;padding:22px;box-shadow:0 12px 40px #0002}
+h1{text-align:center;margin:0 0 10px;color:#d81b60}.wheelbox{position:relative;display:flex;justify-content:center;align-items:center;padding:10px}
+canvas{width:min(78vw,560px);height:min(78vw,560px);max-width:560px;max-height:560px}
+.pointer{position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:42px solid #111;z-index:3}
+button{border:0;border-radius:14px;padding:14px 22px;font-size:18px;font-weight:700;cursor:pointer;background:#d81b60;color:#fff;width:100%;margin-top:10px}
+button:disabled{opacity:.5;cursor:not-allowed}.result{text-align:center;font-size:25px;font-weight:800;margin:14px 0 0;min-height:34px}
+label{display:block;font-weight:700;margin-top:12px}input{width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:16px}
+.row{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center}.hint{font-size:13px;color:#666;margin:8px 0}.total{font-weight:800;margin:14px 0}.ok{color:#16803c}.bad{color:#c62828}
+@media(max-width:800px){.card{padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="card">
+<h1>🎡 VÒNG QUAY MAY MẮN</h1>
+<div class="wheelbox"><div class="pointer"></div><canvas id="wheel" width="700" height="700"></canvas></div>
+<button id="spin">QUAY NGAY</button>
+<div id="result" class="result"></div>
+</section>
+
+
+</div>
+
+<script>
+const prizes=[
+ {name:"500 nghìn", short:"500K", rate:70},
+ {name:"1 triệu", short:"1 TRIỆU", rate:30},
+ {name:"2 triệu", short:"2 TRIỆU", rate:0},
+ {name:"3 triệu", short:"3 TRIỆU", rate:0},
+ {name:"5 triệu", short:"5 TRIỆU", rate:0},
+ {name:"7 triệu", short:"7 TRIỆU", rate:0},
+ {name:"8 triệu", short:"8 TRIỆU", rate:0},
+ {name:"10 triệu", short:"10 TRIỆU", rate:0}
+];
+
+const canvas=document.getElementById("wheel"),ctx=canvas.getContext("2d");
+const spinBtn=document.getElementById("spin"),result=document.getElementById("result");
+const totalEl=null;
+let angle=0,busy=false;
+
+function renderSettings(){
+ /* Tỷ lệ được cài sẵn trong mã và không hiển thị cho khách. */
+}
+function updateTotal(){
+ const t=prizes.reduce((s,p)=>s+p.rate,0);
+ totalEl.textContent="Tổng tỷ lệ: "+t.toFixed(1)+"%";
+ totalEl.className="total "+(Math.abs(t-100)<.001?"ok":"bad");
+}
+function draw(){
+ const cx=350,cy=350,r=320,n=prizes.length,step=Math.PI*2/n;
+ ctx.clearRect(0,0,700,700);
+ ctx.save();ctx.translate(cx,cy);ctx.rotate(angle);
+ for(let i=0;i<n;i++){
+   const a=i*step-step/2;
+   ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r,a,a+step);ctx.closePath();
+   ctx.fillStyle=`hsl(${i*360/n},75%,${i%2?60:70}%)`;ctx.fill();
+   ctx.strokeStyle="#fff";ctx.lineWidth=5;ctx.stroke();
+   ctx.save();ctx.rotate(i*step);
+   ctx.textAlign="right";ctx.fillStyle="#111";ctx.font="bold 27px Arial";
+   ctx.fillText(prizes[i].short,r-24,9);ctx.restore();
+ }
+ ctx.restore();
+ ctx.beginPath();ctx.arc(cx,cy,62,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.strokeStyle="#d81b60";ctx.lineWidth=8;ctx.stroke();
+ ctx.fillStyle="#d81b60";ctx.font="bold 25px Arial";ctx.textAlign="center";ctx.fillText("QUAY",cx,cy+8);
+}
+function pickWeighted(){
+ const total=prizes.reduce((s,p)=>s+p.rate,0);
+ let x=Math.random()*total;
+ for(let i=0;i<prizes.length;i++){if(x<prizes[i].rate)return i;x-=prizes[i].rate;}
+ return prizes.length-1;
+}
+function spin(){
+ if(busy)return;
+ const idx=pickWeighted();
+ busy=true;spinBtn.disabled=true;result.textContent="";
+ const n=prizes.length,step=2*Math.PI/n;
+ // Kim ở phía trên (-PI/2). Chọn tâm ô idx và quay nhiều vòng.
+ const target=-Math.PI/2-(idx*step)+step/2;
+ const current=angle;
+ let delta=target-current;
+ while(delta<0)delta+=Math.PI*2;
+ delta+=Math.PI*2*(5+Math.floor(Math.random()*3));
+ const start=performance.now(),duration=5200;
+ function anim(now){
+   const t=Math.min(1,(now-start)/duration);
+   const eased=1-Math.pow(1-t,4);
+   angle=current+delta*eased;draw();
+   if(t<1){requestAnimationFrame(anim)}
+   else{
+     busy=false;spinBtn.disabled=false;
+     result.textContent="🎉 Chúc mừng: "+prizes[idx].name+"!";
+   }
+ }
+ requestAnimationFrame(anim);
+}
+spinBtn.addEventListener("click",spin);
+draw();
+</script>
+</body>
+</html>
